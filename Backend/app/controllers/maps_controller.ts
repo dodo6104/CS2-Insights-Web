@@ -9,8 +9,7 @@ export default class MapsController {
   }
 
   async returnSpots({ params, response }: HttpContext) {
-    const map = await Map.query().whereILike('name', params.mapName).first()
-
+    const map = await Map.query().whereILike('name', params.mapName.replace('%20', ' ')).first()
     if (!map) {
       return response.status(404).json({ message: 'Map not found' })
     }

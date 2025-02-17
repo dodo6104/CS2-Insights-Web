@@ -46,13 +46,18 @@
     >
   </div>
   <div
-    class="container"
+  :class="{
+      'container': !this.wantAddUtil,
+      'add-util-container': this.wantAddUtil
+    }"
     @wheel="zoomMap"
     @mousedown="startDrag"
     @mousemove="dragMap"
     @mouseup="endDrag"
   >
-    <div class="map-wrapper" :style="mapTransformStyle">
+    <div class="map-wrapper"
+    :style="mapTransformStyle"
+    >
       <q-img
         ref="mapImage"
         :src="mapSrc"
@@ -60,6 +65,25 @@
         class="mirage-image"
         @load="getImageSize"
       />
+      <q-btn
+        :style="{
+          top: clickPositionY + 'px',
+          left: clickPositionX + 'px',
+          padding: 0,
+          position: 'absolute', // Dôležité pre pohyb
+          cursor: isDraggingUtil ? 'grabbing' : 'grab',
+        }"
+        @mousedown="startDragUtil"
+      >
+        <q-icon
+          name="radio_button_checked"
+          color="white"
+          :size="`${6 / (scale / 2)}px`"
+          class="radioBtn"
+        >
+        </q-icon>
+      </q-btn>
+
 
       <q-btn
         v-for="spot in smokes"
@@ -67,15 +91,15 @@
         v-show="
           spot.grenadeTypeId === 1
             ? areSmokesShowed
-          : spot.grenadeTypeId === 2
+            : spot.grenadeTypeId === 2
             ? areFlashbangsShowed
-          : spot.grenadeTypeId === 3
+            : spot.grenadeTypeId === 3
             ? areGrenadesShowed
-          : spot.grenadeTypeId === 4
+            : spot.grenadeTypeId === 4
             ? areMolotovsShowed
-          : spot.grenadeTypeId === 5
+            : spot.grenadeTypeId === 5
             ? isMoreShowed
-          : false
+            : false
         "
         class="marker no-hover"
         flat
@@ -86,7 +110,11 @@
         }"
         @click="showPositions(spot)"
       >
-        <q-img :src=getGrenadeIconImageSource(spot.grenadeTypeId) width="25px" height="25px" />
+        <q-img
+          :src="getGrenadeIconImageSource(spot.grenadeTypeId)"
+          width="25px"
+          height="25px"
+        />
       </q-btn>
 
       <q-btn
@@ -110,7 +138,6 @@
           class="radioBtn"
         />
       </q-btn>
-
       <q-dialog v-model="isProcedureVisible" @hide="onDialogClose">
         <div
           class="relative-position"
@@ -124,8 +151,24 @@
             align-items: center;
           "
         >
-          <div class="top text-h6" style="color: black; padding: 8px 16px">
+          <div
+            class="top text-h6 video-tile"
+            style="color: black; padding: 8px 16px"
+          >
             {{ postionName }}
+          </div>
+          <div class="rating-section">
+            <q-icon name="star" style="color: #ffd700" size="50px" />
+            <q-icon name="star" style="color: #ffd700" size="50px" />
+            <q-icon name="star" style="color: #ffd700" size="50px" />
+            <q-icon name="star" style="color: #ffd700" size="50px" />
+            <q-icon name="star" style="color: #ffd700" size="50px" />
+          </div>
+
+          <div class="video-description">
+            <div>Procedure:</div>
+            <div>Difficulty:</div>
+            <div></div>
           </div>
 
           <div class="video-container">
@@ -178,6 +221,17 @@
         </div>
       </q-dialog>
     </div>
+    <div class="add-utill-btn">
+      <q-btn
+        round
+        color="white"
+        text-color="black"
+        icon="add"
+        class="add-btn"
+        size="40px"
+        @click="addUtil"
+      />
+    </div>
   </div>
 </template>
 
@@ -221,12 +275,27 @@ export default {
       mapName: '',
       importantTime: 0,
 
-      areSmokesShowed: JSON.parse(localStorage.getItem('areSmokesShowed')) ?? true,
-      areFlashbangsShowed: JSON.parse(localStorage.getItem('areFlashbangsShowed')) ?? false,
-      areGrenadesShowed: JSON.parse(localStorage.getItem('areGrenadesShowed')) ?? false,
-      areMolotovsShowed: JSON.parse(localStorage.getItem('areMolotovsShowed')) ?? false,
+      areSmokesShowed:
+        JSON.parse(localStorage.getItem('areSmokesShowed')) ?? true,
+      areFlashbangsShowed:
+        JSON.parse(localStorage.getItem('areFlashbangsShowed')) ?? false,
+      areGrenadesShowed:
+        JSON.parse(localStorage.getItem('areGrenadesShowed')) ?? false,
+      areMolotovsShowed:
+        JSON.parse(localStorage.getItem('areMolotovsShowed')) ?? false,
       isMoreShowed: JSON.parse(localStorage.getItem('isMoreShowed')) ?? false,
+      wantAddUtil: false,
+
+      clickPositionX: 0,
+      clickPositionY: 0,
+
+      isDraggingUtil: false,
+      utilStartX: 0,
+      utilStartY: 0,
+      offsetX: 0,
+      offsetY: 0,
     };
+
   },
   computed: {
     limitedTranslateX() {
@@ -278,16 +347,28 @@ export default {
     showProcedureGrenades(showGrenades) {
       if (showGrenades === 'smokes') {
         this.areSmokesShowed = !this.areSmokesShowed;
-        localStorage.setItem('areSmokesShowed', JSON.stringify(this.areSmokesShowed));
+        localStorage.setItem(
+          'areSmokesShowed',
+          JSON.stringify(this.areSmokesShowed)
+        );
       } else if (showGrenades === 'flashbangs') {
         this.areFlashbangsShowed = !this.areFlashbangsShowed;
-        localStorage.setItem('areFlashbangsShowed', JSON.stringify(this.areFlashbangsShowed));
+        localStorage.setItem(
+          'areFlashbangsShowed',
+          JSON.stringify(this.areFlashbangsShowed)
+        );
       } else if (showGrenades === 'grenades') {
         this.areGrenadesShowed = !this.areGrenadesShowed;
-        localStorage.setItem('areGrenadesShowed', JSON.stringify(this.areGrenadesShowed));
+        localStorage.setItem(
+          'areGrenadesShowed',
+          JSON.stringify(this.areGrenadesShowed)
+        );
       } else if (showGrenades === 'molotovs') {
         this.areMolotovsShowed = !this.areMolotovsShowed;
-        localStorage.setItem('areMolotovsShowed', JSON.stringify(this.areMolotovsShowed));
+        localStorage.setItem(
+          'areMolotovsShowed',
+          JSON.stringify(this.areMolotovsShowed)
+        );
       } else if (showGrenades === 'more') {
         this.isMoreShowed = !this.isMoreShowed;
         localStorage.setItem('isMoreShowed', JSON.stringify(this.isMoreShowed));
@@ -301,6 +382,10 @@ export default {
     },
 
     zoomMap(event) {
+      if (this.wantAddUtil) {
+        return;
+      }
+
       const zoomSpeed = 0.1;
       this.scale += event.deltaY > 0 ? -zoomSpeed : zoomSpeed;
       this.scale = Math.min(Math.max(this.scale, 1), 3);
@@ -313,11 +398,19 @@ export default {
     },
 
     toggleZoom() {
+      if (this.wantAddUtil) {
+        return;
+      }
+
       this.isZoomedIn = !this.isZoomedIn;
       this.videoScale = this.isZoomedIn ? 3 : 1;
     },
 
     jumpToImportantMoment() {
+      if (this.wantAddUtil) {
+        return;
+      }
+
       const videoEl = this.$refs.videoPlayer;
       console.log(this.importantTime);
       if (videoEl) {
@@ -327,6 +420,7 @@ export default {
     },
 
     showPositions(spot) {
+
       if (this.selectedSpot.id === spot.id) {
         this.selectedSpot = {};
         this.selectedPositions = [];
@@ -371,11 +465,17 @@ export default {
       }
     },
     dragMap(event) {
+      if (this.wantAddUtil) {
+        return;
+      }
       if (!this.isDragging || this.scale === 1) return;
       this.translateX = event.clientX - this.startX;
       this.translateY = event.clientY - this.startY;
     },
     endDrag() {
+      if (this.wantAddUtil) {
+        return;
+      }
       this.isDragging = false;
     },
     onDialogClose() {
@@ -388,7 +488,7 @@ export default {
         2: 'src/assets/icons/flash.png',
         3: 'src/assets/icons/grenade.png',
         4: 'src/assets/icons/molotov.png',
-        5: 'src/assets/icons/more.png'
+        5: 'src/assets/icons/more.png',
       };
       return icons[grenadeId] || '';
     },
@@ -400,7 +500,45 @@ export default {
         }
       });
     },
+    addUtil() {
+      this.areSmokesShowed = false
+      this.areFlashbangsShowed = false
+      this.areGrenadesShowed = false
+      this.areMolotovsShowed = false
+      this.isMoreShowed = false
+      this.wantAddUtil = !this.wantAddUtil
+    },
+
+    startDragUtil(event) {
+    this.isDraggingUtil = true;
+
+    // Uloženie počiatočnej pozície kurzora
+    this.utilStartX = event.clientX;
+    this.utilStartY = event.clientY;
+
+    // Vypočítanie posunu od aktuálnej pozície
+    this.offsetX = event.clientX - this.clickPositionX;
+    this.offsetY = event.clientY - this.clickPositionY;
+
+    document.addEventListener('mousemove', this.dragUtil);
+    document.addEventListener('mouseup', this.stopDragUtil);
   },
+
+  dragUtil(event) {
+    if (!this.isDraggingUtil) return;
+
+    // Aktualizácia pozície podľa myši
+    this.clickPositionX = event.clientX - this.offsetX;
+    this.clickPositionY = event.clientY - this.offsetY;
+  },
+
+  stopDragUtil() {
+    this.isDraggingUtil = false;
+
+    document.removeEventListener('mousemove', this.dragUtil);
+    document.removeEventListener('mouseup', this.stopDragUtil);
+  },
+  }
 };
 </script>
 
@@ -410,6 +548,16 @@ export default {
   width: 100%;
   overflow: hidden;
   cursor: grab;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #0c0c0c;
+}
+
+.add-util-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -474,7 +622,7 @@ export default {
   width: 80%;
   min-height: 0px;
   border-radius: 50px;
-  padding-top: 10px;
+  padding-top: 20px;
   padding-bottom: 20px;
   min-height: 100px;
 }
@@ -488,7 +636,8 @@ export default {
   border: 1px solid #0c0c0c;
   cursor: pointer;
   min-height: 0;
-  transition: font-size 0.3s ease-in-out, color 0.3s ease-in-out;
+  transition: font-size 0.3s ease-in-out, color 0.3s ease-in-out,
+    border 0.3s ease-in-out;
 }
 
 .leftCornerBtn {
@@ -509,6 +658,33 @@ export default {
   width: 20%;
   background-color: #ff0000;
   min-height: 0;
-  transition: font-size 0.3s ease-in, color 0.3s ease-in;
+  border: 3px solid #0c0c0c;
+  transition: font-size 0.3s ease-in, color 0.3s ease-in, border 0.3s ease-in;
 }
+
+.video-tile {
+  font-size: 60px;
+  font-weight: bold;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.rating-section {
+  width: 80%;
+  text-align: center;
+  border-bottom: 3px solid #0c0c0c;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+.video-description {
+  font-size: 20px;
+  padding-bottom: 20px;
+}
+
+.add-utill-btn {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+}
+
 </style>
