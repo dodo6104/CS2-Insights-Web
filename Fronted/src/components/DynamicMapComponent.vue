@@ -16,37 +16,40 @@
         'clicked-tool-bar-btn': areFlashbangsShowed,
       }"
       @click="showProcedureGrenades('flashbangs')"
-      >Flashbangs
+    >
+      Flashbangs
     </q-btn>
     <q-btn
-      q-btn
       :class="{
         'tool-bar-btn': true,
         'clicked-tool-bar-btn': areGrenadesShowed,
       }"
       @click="showProcedureGrenades('grenades')"
-      >Grenades
+    >
+      Grenades
     </q-btn>
     <q-btn
-      q-btn
       :class="{
         'tool-bar-btn': true,
         'clicked-tool-bar-btn': areMolotovsShowed,
       }"
       @click="showProcedureGrenades('molotovs')"
-      >Molotovs</q-btn
     >
+      Molotovs
+    </q-btn>
     <q-btn
       :class="{
         'tool-bar-btn right-corner-btn': true,
         'clicked-tool-bar-btn right-corner-btn': isMoreShowed,
       }"
       @click="showProcedureGrenades('more')"
-      >More</q-btn
     >
+      More
+    </q-btn>
   </div>
+
   <div
-  :class="{
+    :class="{
       'container': !this.wantAddUtil,
       'add-util-container': this.wantAddUtil
     }"
@@ -55,9 +58,7 @@
     @mousemove="dragMap"
     @mouseup="endDrag"
   >
-    <div class="map-wrapper"
-    :style="mapTransformStyle"
-    >
+    <div class="map-wrapper" :style="mapTransformStyle">
       <q-img
         ref="mapImage"
         :src="mapSrc"
@@ -65,26 +66,8 @@
         class="mirage-image"
         @load="getImageSize"
       />
-      <q-btn
-        :style="{
-          top: clickPositionY + 'px',
-          left: clickPositionX + 'px',
-          padding: 0,
-          position: 'absolute', // Dôležité pre pohyb
-          cursor: isDraggingUtil ? 'grabbing' : 'grab',
-        }"
-        @mousedown="startDragUtil"
-      >
-        <q-icon
-          name="radio_button_checked"
-          color="white"
-          :size="`${6 / (scale / 2)}px`"
-          class="radioBtn"
-        >
-        </q-icon>
-      </q-btn>
 
-
+      <!-- Tlačidlá (spots) -->
       <q-btn
         v-for="spot in smokes"
         :key="spot.id"
@@ -117,6 +100,7 @@
         />
       </q-btn>
 
+      <!-- Tlačidlá na konkrétnych pozíciách vo vybranom spote -->
       <q-btn
         v-for="(position, index) in selectedPositions"
         :key="index"
@@ -138,6 +122,7 @@
           class="radioBtn"
         />
       </q-btn>
+
       <q-dialog v-model="isProcedureVisible" @hide="onDialogClose">
         <div
           class="relative-position"
@@ -221,21 +206,96 @@
         </div>
       </q-dialog>
     </div>
-    <div class="add-utill-btn">
-      <q-btn
-        round
-        color="white"
-        text-color="black"
-        icon="add"
-        class="add-btn"
-        size="40px"
-        @click="addUtil"
-      />
+
+    <div class="q-pa-md add-utill-btn">
+      <q-fab
+        v-model="fabOpen"
+        direction="up"
+        :icon="fabOpen ? 'close' : 'menu'"
+        active-icon="close"
+        :hide-label="!fabOpen"
+        color="primary"
+        square
+        push
+      >
+
+        <q-fab-action
+          @mousedown.stop.prevent="createDraggableIcon('molotov')"
+        >
+          <img
+            src="../assets/icons/molotov-cocktail.png"
+            width="83"
+            height="83"
+            alt="Molotov Icon"
+          />
+        </q-fab-action>
+
+        <q-fab-action
+          @mousedown.stop.prevent="createDraggableIcon('flashbang')"
+        >
+          <img
+            src="../assets/icons/flashbang-grenade.png"
+            width="83"
+            height="83"
+            alt="Flashbang Icon"
+          />
+        </q-fab-action>
+
+        <q-fab-action
+          @mousedown.stop.prevent="createDraggableIcon('grenade')"
+        >
+          <img
+            src="../assets/icons/grenade.png"
+            width="83"
+            height="83"
+            alt="Grenade Icon"
+          />
+        </q-fab-action>
+
+        <q-fab-action
+          @mousedown.stop.prevent="createDraggableIcon('smoke')"
+        >
+          <img
+            src="../assets/icons/smoke-grenade.png"
+            width="83"
+            height="83"
+            alt="Smoke Icon"
+          />
+        </q-fab-action>
+      </q-fab>
+    </div>
+
+    <!-- Samostatne zobrazené "draggable" ikony, ktoré vzniknú po kliknutí na Q-FAB Action. -->
+    <div v-for="(icon, index) in draggableIcons" :key="index">
+      <div
+        class="draggable-icon"
+        :style="{
+          position: 'absolute',
+          top: icon.y + 'px',
+          left: icon.x + 'px',
+          cursor: icon.isDragging ? 'grabbing' : 'grab',
+          zIndex: 9999
+        }"
+        @mousedown="startIconDrag($event, index)"
+      >
+        <img
+          :src="icon.src"
+          width="50"
+          height="50"
+          :alt="icon.type + ' Icon'"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import molotovIcon from '../assets/icons/molotov-cocktail.png'
+import flashbangIcon from '../assets/icons/flashbang-grenade.png'
+import grenadeIcon from '../assets/icons/grenade.png'
+import smokeIcon from '../assets/icons/smoke-grenade.png'
+import markerIcon from '../assets/icons/marker.png'
+
 export default {
   name: 'DynamicMapComponent',
   props: {
@@ -250,9 +310,11 @@ export default {
   },
   data() {
     return {
+      // Pre video
       isZoomedIn: false,
       videoScale: 1,
 
+      // Map a spots
       smokes: [],
       tempSpots: [],
       selectedSpot: {},
@@ -270,11 +332,13 @@ export default {
       isProcedureVisible: false,
       selectedProcedure: {},
 
+      // Info o procedure
       postionName: '',
       videoSrc: '',
       mapName: '',
       importantTime: 0,
 
+      // Filtre
       areSmokesShowed:
         JSON.parse(localStorage.getItem('areSmokesShowed')) ?? true,
       areFlashbangsShowed:
@@ -286,16 +350,30 @@ export default {
       isMoreShowed: JSON.parse(localStorage.getItem('isMoreShowed')) ?? false,
       wantAddUtil: false,
 
+      // Drag jedného markeru (demo)
       clickPositionX: 0,
       clickPositionY: 0,
-
       isDraggingUtil: false,
       utilStartX: 0,
       utilStartY: 0,
       offsetX: 0,
       offsetY: 0,
-    };
 
+      // Q-FAB
+      fabOpen: false,
+
+      // Zoznam "ikoniek" na mape, ktoré sú samostatne ťahateľné
+      draggableIcons: [],
+      currentDraggedIndex: null,
+
+      iconsMap: {
+      molotov: molotovIcon,
+      flashbang: flashbangIcon,
+      grenade: grenadeIcon,
+      smoke: smokeIcon,
+      marker: markerIcon
+      },
+    };
   },
   computed: {
     limitedTranslateX() {
@@ -320,11 +398,10 @@ export default {
     mapData: {
       handler(newData) {
         this.smokes = newData;
-        console.log(this.smokes);
         try {
-          this.mapName = newData[0].map.name || '';
+          this.mapName = newData[0]?.map?.name || '';
         } catch (error) {
-          console.log('Error');
+          console.log('Error', error);
         }
       },
       deep: true,
@@ -342,34 +419,28 @@ export default {
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.getImageSize);
+    // Pre istotu odoberieme prípadné listenery pri unmount
+    document.removeEventListener('mousemove', this.handleIconDrag);
+    document.removeEventListener('mouseup', this.stopIconDrag);
   },
   methods: {
-    showProcedureGrenades(showGrenades) {
-      if (showGrenades === 'smokes') {
+    // Ovládanie viditeľnosti granátov
+    showProcedureGrenades(type) {
+      this.draggableIcons = []
+
+      if (type === 'smokes') {
         this.areSmokesShowed = !this.areSmokesShowed;
-        localStorage.setItem(
-          'areSmokesShowed',
-          JSON.stringify(this.areSmokesShowed)
-        );
-      } else if (showGrenades === 'flashbangs') {
+        localStorage.setItem('areSmokesShowed', JSON.stringify(this.areSmokesShowed));
+      } else if (type === 'flashbangs') {
         this.areFlashbangsShowed = !this.areFlashbangsShowed;
-        localStorage.setItem(
-          'areFlashbangsShowed',
-          JSON.stringify(this.areFlashbangsShowed)
-        );
-      } else if (showGrenades === 'grenades') {
+        localStorage.setItem('areFlashbangsShowed', JSON.stringify(this.areFlashbangsShowed));
+      } else if (type === 'grenades') {
         this.areGrenadesShowed = !this.areGrenadesShowed;
-        localStorage.setItem(
-          'areGrenadesShowed',
-          JSON.stringify(this.areGrenadesShowed)
-        );
-      } else if (showGrenades === 'molotovs') {
+        localStorage.setItem('areGrenadesShowed', JSON.stringify(this.areGrenadesShowed));
+      } else if (type === 'molotovs') {
         this.areMolotovsShowed = !this.areMolotovsShowed;
-        localStorage.setItem(
-          'areMolotovsShowed',
-          JSON.stringify(this.areMolotovsShowed)
-        );
-      } else if (showGrenades === 'more') {
+        localStorage.setItem('areMolotovsShowed', JSON.stringify(this.areMolotovsShowed));
+      } else if (type === 'more') {
         this.isMoreShowed = !this.isMoreShowed;
         localStorage.setItem('isMoreShowed', JSON.stringify(this.isMoreShowed));
       }
@@ -381,15 +452,12 @@ export default {
       }
     },
 
+    // Zoom mapy
     zoomMap(event) {
-      if (this.wantAddUtil) {
-        return;
-      }
-
+      if (this.wantAddUtil) return;
       const zoomSpeed = 0.1;
       this.scale += event.deltaY > 0 ? -zoomSpeed : zoomSpeed;
       this.scale = Math.min(Math.max(this.scale, 1), 3);
-
       if (this.scale === 1) {
         this.translateX = 0;
         this.translateY = 0;
@@ -397,30 +465,25 @@ export default {
       this.getImageSize();
     },
 
+    // Prepínanie priblíženia videa
     toggleZoom() {
-      if (this.wantAddUtil) {
-        return;
-      }
-
+      if (this.wantAddUtil) return;
       this.isZoomedIn = !this.isZoomedIn;
       this.videoScale = this.isZoomedIn ? 3 : 1;
     },
 
+    // Posun videa na dôležitú časť
     jumpToImportantMoment() {
-      if (this.wantAddUtil) {
-        return;
-      }
-
+      if (this.wantAddUtil) return;
       const videoEl = this.$refs.videoPlayer;
-      console.log(this.importantTime);
       if (videoEl) {
         videoEl.currentTime = this.importantTime;
         videoEl.pause();
       }
     },
 
+    // Klik na spot -> zobrazenie jeho polôh
     showPositions(spot) {
-
       if (this.selectedSpot.id === spot.id) {
         this.selectedSpot = {};
         this.selectedPositions = [];
@@ -434,6 +497,7 @@ export default {
       this.smokes = [spot];
     },
 
+    // Klik na pozíciu -> zobrazenie postupu v dialógu
     showProcedure(position) {
       this.videoSrc = `http://localhost:3333/video/${this.mapName}/${position.source}`;
       this.importantTime = position.keyTime;
@@ -442,6 +506,7 @@ export default {
       this.isProcedureVisible = true;
     },
 
+    // Play/Pause videa
     toggleVideoPlayback() {
       const videoEl = this.$refs.videoPlayer;
       if (videoEl.paused) {
@@ -451,12 +516,14 @@ export default {
       }
     },
 
+    // Stop videa
     stopVideo() {
       const videoEl = this.$refs.videoPlayer;
       videoEl.pause();
       videoEl.currentTime = 0;
     },
 
+    // Drag mapy
     startDrag(event) {
       if (this.scale > 1) {
         this.isDragging = true;
@@ -465,17 +532,13 @@ export default {
       }
     },
     dragMap(event) {
-      if (this.wantAddUtil) {
-        return;
-      }
+      if (this.wantAddUtil) return;
       if (!this.isDragging || this.scale === 1) return;
       this.translateX = event.clientX - this.startX;
       this.translateY = event.clientY - this.startY;
     },
     endDrag() {
-      if (this.wantAddUtil) {
-        return;
-      }
+      if (this.wantAddUtil) return;
       this.isDragging = false;
     },
     onDialogClose() {
@@ -501,44 +564,102 @@ export default {
       });
     },
     addUtil() {
-      this.areSmokesShowed = false
-      this.areFlashbangsShowed = false
-      this.areGrenadesShowed = false
-      this.areMolotovsShowed = false
-      this.isMoreShowed = false
-      this.wantAddUtil = !this.wantAddUtil
+      this.areSmokesShowed = false;
+      this.areFlashbangsShowed = false;
+      this.areGrenadesShowed = false;
+      this.areMolotovsShowed = false;
+      this.isMoreShowed = false;
+      this.wantAddUtil = !this.wantAddUtil;
     },
 
+    // Drag jedného markeru (demo kód hore)
     startDragUtil(event) {
-    this.isDraggingUtil = true;
+      this.isDraggingUtil = true;
+      this.utilStartX = event.clientX;
+      this.utilStartY = event.clientY;
+      this.offsetX = event.clientX - this.clickPositionX;
+      this.offsetY = event.clientY - this.clickPositionY;
 
-    // Uloženie počiatočnej pozície kurzora
-    this.utilStartX = event.clientX;
-    this.utilStartY = event.clientY;
+      document.addEventListener('mousemove', this.dragUtil);
+      document.addEventListener('mouseup', this.stopDragUtil);
+    },
+    dragUtil(event) {
+      if (!this.isDraggingUtil) return;
+      this.clickPositionX = event.clientX - this.offsetX;
+      this.clickPositionY = event.clientY - this.offsetY;
+    },
+    stopDragUtil() {
+      this.isDraggingUtil = false;
+      document.removeEventListener('mousemove', this.dragUtil);
+      document.removeEventListener('mouseup', this.stopDragUtil);
+    },
 
-    // Vypočítanie posunu od aktuálnej pozície
-    this.offsetX = event.clientX - this.clickPositionX;
-    this.offsetY = event.clientY - this.clickPositionY;
+    createDraggableIcon(type) {
+      this.addUtil()
+      const iconSrc = this.iconsMap[type] || '';
 
-    document.addEventListener('mousemove', this.dragUtil);
-    document.addEventListener('mouseup', this.stopDragUtil);
+      this.draggableIcons = []
+
+      this.draggableIcons.push({
+        type,
+        src: iconSrc,
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        isDragging: false,
+        offsetX: 0,
+        offsetY: 0,
+        style: {
+          width: '14px',
+          height: '14px'
+        }
+      });
+
+      this.draggableIcons.push({
+        type,
+        src: this.iconsMap['marker'],
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        isDragging: false,
+        offsetX: 0,
+        offsetY: 0,
+        style: {
+          width: '30px',
+          height: '30px'
+        }
+      });
+    },
+
+    startIconDrag(event, index) {
+      this.currentDraggedIndex = index;
+      const icon = this.draggableIcons[index];
+      icon.isDragging = true;
+
+      icon.offsetX = event.clientX - icon.x;
+      icon.offsetY = event.clientY - icon.y;
+
+      document.addEventListener('mousemove', this.handleIconDrag);
+      document.addEventListener('mouseup', this.stopIconDrag);
+    },
+
+    handleIconDrag(event) {
+      if (this.currentDraggedIndex === null) return;
+      const icon = this.draggableIcons[this.currentDraggedIndex];
+      if (!icon.isDragging) return;
+
+      icon.x = event.clientX - icon.offsetX;
+      icon.y = event.clientY - icon.offsetY;
+    },
+
+    stopIconDrag() {
+      if (this.currentDraggedIndex === null) return;
+      const icon = this.draggableIcons[this.currentDraggedIndex];
+      icon.isDragging = false;
+      this.currentDraggedIndex = null;
+
+      document.removeEventListener('mousemove', this.handleIconDrag);
+      document.removeEventListener('mouseup', this.stopIconDrag);
+    },
   },
-
-  dragUtil(event) {
-    if (!this.isDraggingUtil) return;
-
-    // Aktualizácia pozície podľa myši
-    this.clickPositionX = event.clientX - this.offsetX;
-    this.clickPositionY = event.clientY - this.offsetY;
-  },
-
-  stopDragUtil() {
-    this.isDraggingUtil = false;
-
-    document.removeEventListener('mousemove', this.dragUtil);
-    document.removeEventListener('mouseup', this.stopDragUtil);
-  },
-  }
 };
 </script>
 
@@ -676,6 +797,7 @@ export default {
   padding-bottom: 10px;
   margin-bottom: 20px;
 }
+
 .video-description {
   font-size: 20px;
   padding-bottom: 20px;
@@ -687,4 +809,11 @@ export default {
   right: 40px;
 }
 
+.draggable-icon {
+  /* Môžeš pridať nejaké extra orámovanie atď. */
+}
+
+.q-mt-lg {
+  margin-top: 1rem;
+}
 </style>
