@@ -11,8 +11,10 @@ import { Application } from '@adonisjs/core/app'
 import app from '@adonisjs/core/services/app'
 import router from '@adonisjs/core/services/router'
 import { createReadStream } from 'node:fs'
+import { request } from 'node:http'
 
 const MapsController = () => import('#controllers/maps_controller')
+const UtilitiesController = () => import('#controllers/utilities_controller')
 
 router.get('maps', [MapsController, 'index'])
 
@@ -30,3 +32,5 @@ router.get('/video/:mapName/:positionName', async ({ params, response }) => {
   const filePath = app.makePath('public', 'smokes', params.mapName, params.positionName + '.mp4')
   return response.download(filePath)
 })
+
+router.post('/add-util', [UtilitiesController, 'addUtil'])

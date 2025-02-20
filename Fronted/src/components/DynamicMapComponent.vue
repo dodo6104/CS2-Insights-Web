@@ -67,7 +67,6 @@
         @load="getImageSize"
       />
 
-      <!-- Tlačidlá (spots) -->
       <q-btn
         v-for="spot in smokes"
         :key="spot.id"
@@ -208,6 +207,7 @@
     </div>
 
     <div class="q-pa-md add-utill-btn">
+
       <q-fab
         v-model="fabOpen"
         direction="up"
@@ -218,6 +218,12 @@
         square
         push
       >
+        <q-fab-action
+        @mousedown.stop.prevent="saveMyUtill()"
+
+        >
+            Save
+        </q-fab-action>
 
         <q-fab-action
           @mousedown.stop.prevent="createDraggableIcon('molotov')"
@@ -240,6 +246,7 @@
             alt="Flashbang Icon"
           />
         </q-fab-action>
+
 
         <q-fab-action
           @mousedown.stop.prevent="createDraggableIcon('grenade')"
@@ -295,6 +302,8 @@ import flashbangIcon from '../assets/icons/flashbang-grenade.png'
 import grenadeIcon from '../assets/icons/grenade.png'
 import smokeIcon from '../assets/icons/smoke-grenade.png'
 import markerIcon from '../assets/icons/marker.png'
+import { api } from 'src/boot/axios';
+
 
 export default {
   name: 'DynamicMapComponent',
@@ -659,6 +668,26 @@ export default {
       document.removeEventListener('mousemove', this.handleIconDrag);
       document.removeEventListener('mouseup', this.stopIconDrag);
     },
+    async saveMyUtill() {
+    console.log(this.draggableIcons);
+
+    if (!this.draggableIcons[0] || !this.draggableIcons[1]) {
+      console.error('Chýbajú údaje v draggableIcons');
+      return;
+    }
+
+    try {
+      const response = await api.post('/add-util', {
+        x: this.draggableIcons[0].x,
+        y: this.draggableIcons[1].y,
+      });
+
+      console.log('Saved:', response.data);
+    } catch (error) {
+      console.error('Not saved:', error);
+    }
+  }
+
   },
 };
 </script>
